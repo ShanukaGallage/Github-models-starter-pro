@@ -1,23 +1,28 @@
-{
-  "name": "github-models-gpt4o-starter",
-  "version": "1.0.0",
-  "description": "Starter repository for demonstrating GitHub Marketplace-hosted AI models (GPT-4o) using Node.js",
-  "main": "index.js",
-  "type": "module",
-  "scripts": {
-    "start": "node sample-basic.js",
-    "basic": "node sample-basic.js",
-    "multiturn": "node sample-multiturn.js",
-    "stream": "node sample-stream.js",
-    "image": "node sample-image.js",
-    "tools": "node sample-tools.js",
-    "reasoning": "node sample-reasoning.js",
-    "creative": "node sample-creative-writing.js",
-    "codereview": "node sample-code-review.js"
+    {
+      "name": "github-models-web-app",
+      "version": "1.0.0",
+      "description": "A web-based AI coding assistant.",
+      "main": "server.js",
+      "type": "module",
+      "scripts": {
+        "start": "node server.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+      },
+      "keywords": [
+        "ai",
+        "chatbot",
+        "nodejs",
+        "express"
+      ],
+      "author": "Shanuka Gallage",
+      "license": "ISC",
+      "dependencies": {
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.19.2",
+        "openai": "^4.52.7"
+      }
+    }
 
-  },
-  "dependencies": {
-    "dotenv": "^16.0.3",
-    "openai": "^5.6.0"
-  }
-}
+    
+

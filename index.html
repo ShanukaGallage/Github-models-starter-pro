@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Coding Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>
+        #chat-window::-webkit-scrollbar { width: 8px; }
+        #chat-window::-webkit-scrollbar-track { background: #f1f1f1; }
+        #chat-window::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        .message-bubble { max-width: 90%; word-wrap: break-word; }
+        .message-bubble pre {
+            background-color: #282c34; color: #abb2bf; padding: 1rem; border-radius: 0.5rem;
+            overflow-x: auto; font-family: 'Courier New', Courier, monospace; position: relative;
+        }
+        .copy-btn {
+            position: absolute; top: 0.5rem; right: 0.5rem; background-color: #4a5568; color: white;
+            border: none; padding: 0.25rem 0.5rem; border-radius: 0.25rem; cursor: pointer; opacity: 0.5;
+        }
+        .message-bubble pre:hover .copy-btn { opacity: 1; }
+        .blinking-cursor { display: inline-block; width: 8px; height: 1.2em; background-color: #333; animation: blink 1s step-end infinite; vertical-align: bottom; }
+        @keyframes blink { 50% { background-color: transparent } }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen font-sans">
+    <div class="w-full max-w-2xl h-[90vh] bg-white rounded-xl shadow-2xl flex flex-col p-4">
+        <div class="border-b pb-4 mb-4">
+             <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">AI Coding Assistant</h1>
+                    <p class="text-lg font-medium text-gray-700 mt-2">By Shanuka Gallage | MIT_UoK </p>
+                </div>
+                <button id="clear-button" class="bg-red-500 text-white rounded-lg px-4 py-2 hover:bg-red-600 transition">Clear Chat</button>
+             </div>
+             <!-- Project Details Section -->
+             <div class="mt-4 text-sm text-gray-600">
+                <p>Powered by GPT-4o</p>
+                <a href="https://github.com/ShanukaGallage/Github-models-starter-pro" target="_blank" class="text-indigo-600 hover:underline mt-2 inline-block">View Project on GitHub</a>
+            </div>
+        </div>
+        <div id="chat-window" class="flex-1 overflow-y-auto p-4 bg-gray-50 rounded-lg mb-4 space-y-4">
+            <div class="flex justify-start">
+                <div class="message-bubble bg-indigo-500 text-white rounded-lg py-2 px-4">Hello! Ask me a coding question.</div>
+            </div>
+        </div>
+        <div class="flex items-center border-t pt-4">
+            <input type="text" id="message-input" placeholder="Type your message..." class="flex-1 border rounded-full py-3 px-6 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button id="send-button" class="ml-4 bg-indigo-600 text-white rounded-full p-3 hover:bg-indigo-700 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7" /></svg></button>
+        </div>
+    </div>
+    <script>
+        const chatWindow = document.getElementById('chat-window');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const clearButton = document.getElementById('clear-button');
+        const converter = new showdown.Converter({ tables: true, strikethrough: true, tasklists: true });
+
+        function addMessage(message, sender) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('flex', sender === 'user' ? 'justify-end' : 'justify-start');
+            const messageBubble = document.createElement('div');
+            messageBubble.classList.add('message-bubble', 'rounded-lg', 'py-2', 'px-4', sender === 'user' ? 'bg-blue-500' : 'bg-indigo-500', 'text-white');
+            messageBubble.innerHTML = converter.makeHtml(message);
+            messageWrapper.appendChild(messageBubble);
+            chatWindow.appendChild(messageWrapper);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return messageBubble;
+        }
+
+        function processCodeBlocks(bubble) {
+            const codeBlocks = bubble.querySelectorAll('pre code');
+            codeBlocks.forEach(block => {
+                hljs.highlightElement(block);
+                const pre = block.parentElement;
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.textContent = 'Copy';
+                copyBtn.onclick = () => {
+                    navigator.clipboard.writeText(block.textContent);
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+                };
+                pre.appendChild(copyBtn);
+            });
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+            addMessage(message, 'user');
+            messageInput.value = '';
+
+            const botBubble = addMessage('<span class="blinking-cursor"></span>', 'bot');
+            let fullResponse = "";
+
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message }),
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n\n').filter(line => line.startsWith('data: '));
+                for (const line of lines) {
+                    try {
+                        const data = JSON.parse(line.replace('data: ', ''));
+                        if (data.content) {
+                            fullResponse += data.content;
+                            botBubble.innerHTML = converter.makeHtml(fullResponse + '<span class="blinking-cursor"></span>');
+                            chatWindow.scrollTop = chatWindow.scrollHeight;
+                        }
+                    } catch (e) {}
+                }
+            }
+            botBubble.innerHTML = converter.makeHtml(fullResponse);
+            processCodeBlocks(botBubble);
+        }
+
+        async function clearChat() {
+            await fetch('/reset', { method: 'POST' });
+            chatWindow.innerHTML = '';
+            addMessage("Hello! Ask me a coding question.", 'bot');
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendMessage());
+        clearButton.addEventListener('click', clearChat);
+    </script>
+</body>
+</html>
+
